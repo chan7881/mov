@@ -421,7 +421,6 @@ function drawOverlay() {
   const last = detectionsPerFrame.length ? detectionsPerFrame[currentFrameIndex] : null;
   if (last?.box) {
     const [x1,y1,x2,y2] = last.box;
-    // 캔버스 CSS 크기에 맞춘 스케일
     const c = extractedFrames[currentFrameIndex];
     const srcCssW = c? (c._cssWidth || overlay.clientWidth) : overlay.clientWidth;
     const srcCssH = c? (c._cssHeight || overlay.clientHeight) : overlay.clientHeight;
@@ -465,7 +464,6 @@ overlay.addEventListener('pointermove', (e) => {
   const y = e.clientY - r.top;
   roi.w = x - roi.x;
   roi.h = y - roi.y;
-  // 음수 크기 보정
   if (roi.w < 0) { roi.x = x; roi.w = Math.abs(roi.w); }
   if (roi.h < 0) { roi.y = y; roi.h = Math.abs(roi.h); }
   drawOverlay();
@@ -473,13 +471,12 @@ overlay.addEventListener('pointermove', (e) => {
 overlay.addEventListener('pointerup', () => {
   if (!isDrawingROI || !roi) return;
   isDrawingROI = false;
-  // 프레임 좌표계로 저장
   const canvasROI = overlayToCanvasRect(roi);
   frameROIs[currentFrameIndex] = canvasROI;
   userLog(`ROI 저장: frame=${currentFrameIndex+1}, x=${canvasROI.x.toFixed(1)}, y=${canvasROI.y.toFixed(1)}, w=${canvasROI.w.toFixed(1)}, h=${canvasROI.h.toFixed(1)}`);
 });
 
-// 분석/재생/CSV 등 (기존 로직, 기본값/|| 수정만 반영)
+// 분석/재생/CSV 등
 function mapBoxToOverlay(box){
   const vw = video.videoWidth, vh = video.videoHeight;
   if(!vw || !vh) return [0,0,0,0];
@@ -758,7 +755,6 @@ function seekToTime(t, videoEl){
   const src = videoEl || video;
   return new Promise((res)=>{
     let done = false;
-    const startMs = Date.now();
     const clearAll = () => {
       try{ src.removeEventListener('seeked', onseek); src.removeEventListener('timeupdate', ontime); }catch{}
     };
@@ -843,7 +839,8 @@ if (exportCSVBtn) bindMulti(exportCSVBtn, (e)=>{
     const y_u = a.y!=null ? (a.y/getScaleValue()).toFixed(4) : '';
     rows.push([i, (d.time ?? 0).toFixed(4), x_px, y_px, x_u, y_u, s, acc]);
   }
-  const csv = rows.map(r=>r.join(',')).join('\n');
+  const csv = rows.map(r=>r.join(',')).join('
+');
   const blob = new Blob([csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
   const aTag = document.createElement('a'); aTag.href = url; aTag.download = 'analysis.csv'; aTag.click();
@@ -858,3 +855,4 @@ _hdrTitle?.addEventListener('dblclick', () => { if (confirm('모델을 다시 �
 setInterval(()=>{ drawOverlay(); }, 200);
 
 // 초기화 안내
+userLog('앱 초기화 완료 — 업로드→표시→추출 경로가 활성화되었습니다.');

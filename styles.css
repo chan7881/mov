@@ -64,3 +64,4 @@ footer{ margin-top:12px; color:#9fb7d9; }
 
 .tab-content{ padding:8px; background:rgba(255,255,255,0.02); border-radius:8px; }
 .big{ background:#06b6d4; color:#002733; padding:10px 12px; border-radius:8px; font-weight:600; }
+.frame-nav button{ padding:6px 10px; }
