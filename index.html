@@ -2,105 +2,157 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Motion Tracker (YOLO ONNX)</title>
-  <link rel="stylesheet" href="styles.css">
+
+  <!-- CSS (상대경로 + 캐시버스터) -->
+  ./styles.css?v=20251120-2
+
+  <!-- 외부 라이브러리: Chart.js, onnxruntime-web -->
+  https://cdn.jsdelivr.net/npm/chart.js</script>
+  https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js</script>
 </head>
 <body>
-  <main class="app">
+  <div class="app">
     <header>
-      <h1>Motion Tracker</h1>
-      <p class="subtitle">동영상에서 물체를 지정해 운동을 분석합니다. (모바일 지원)</p>
+      <h1>Motion Tracker (YOLO ONNX)</h1>
+      <div class="subtitle">동영상에서 물체를 지정해 운동을 분석합니다. (모바일 지원)</div>
+      <div id="status">모델 로드 상태: 대기 중...</div>
+
+      <!-- 상단 탭 -->
+      <div class="tabs">
+        <button id="stepCamera" class="tab active">촬영/업로드</button>
+        <button id="stepExtract" class="tab">프레임 추출</button>
+        <button id="stepROI" class="tab">ROI 선택</button>
+        <button id="stepAnalyze" class="tab">분석/결과</button>
+      </div>
     </header>
 
-    <section class="controls">
-      <div class="tabs">
-        <button id="stepCamera" class="tab active">1. 촬영</button>
-        <button id="stepExtract" class="tab">2. 프레임 추출</button>
-        <button id="stepROI" class="tab">3. ROI 선택</button>
-        <button id="stepAnalyze" class="tab">4. 결과</button>
-      </div>
-
-      <div class="tab-content" id="tab-1">
+    <!-- Tab 1: 업로드/카메라 -->
+    <section id="tab-1" class="tab-content">
+      <div class="controls">
         <div class="row">
-          <label class="file-btn">파일 업로드<input id="videoFile" type="file" accept="video/*" /></label>
+          <label class="file-btn">
+            <input type="file" id="videoFile" accept="video/*" />
+            비디오 업로드
+          </label>
           <button id="startCamera">카메라 켜기</button>
-          <button id="recordToggle" disabled style="display:none">녹화 시작</button>
+          <button id="recordToggle" style="display:none;" disabled>녹화 시작</button>
         </div>
         <div class="hint">카메라로 촬영하거나 비디오 파일을 업로드하세요.</div>
       </div>
 
-      <div class="tab-content" id="tab-2" style="display:none">
-        <div class="row small">
-          <label>FPS: <input id="fpsInput" type="number" value="10" min="1" max="60"></label>
-          <label>신뢰도: <input id="confInput" type="number" value="0.3" step="0.05" min="0" max="1"></label>
+      <div class="workspace">
+        <div class="video-wrap">
+          <!-- 비디오/프리뷰/오버레이가 같은 영역에 겹쳐 표시됩니다 -->
+          <video playsinline muted></video>
+          <img id="framePreview" alt="frame preview" />
+          <canvas id="overlay"></canvas>
         </div>
-        <div class="row" style="margin-top:8px">
-          <button id="extractFramesBtn" class="big">프레임 추출 시작</button>
-        </div>
-        <div id="extractProgress" style="flex:1;display:none;margin-top:8px">
-          <div style="background:#123;height:12px;border-radius:6px;overflow:hidden"><div id="progressBar" style="background:#4fd1c5;height:100%;width:0%"></div></div>
-          <div class="hint" id="progressText">0%</div>
-        </div>
-        <div class="row frame-nav" style="display:none;align-items:center;gap:8px;margin-top:8px">
-          <button id="prevFrame">◀</button>
-          <div id="frameIdx" class="hint">Frame 0 / 0</div>
-          <button id="nextFrame">▶</button>
-          <button id="frameROI" class="small">이 프레임 ROI 선택</button>
-        </div>
-        <!-- Frame preview is shown in the workspace video area -->
-      </div>
 
-      <div class="tab-content" id="tab-3" style="display:none">
-        <div class="hint">각 프레임을 확인하며 ROI를 지정하세요. 지정한 프레임은 목록에 저장됩니다.</div>
-        <div class="row" style="margin-top:8px">
-          <button id="completeROIs" class="big">ROI 선택 완료 (자동 분석 실행)</button>
-        </div>
-      </div>
-
-      <div class="tab-content" id="tab-4" style="display:none">
-        <div class="row" style="margin-bottom:8px">
-          <button id="playResultsBtn" class="big">결과 재생</button>
-          <button id="exportCSV">CSV 내보내기</button>
-        </div>
-        <div id="charts">
-          <canvas id="posChart"></canvas>
-          <canvas id="velChart"></canvas>
-        </div>
-      </div>
-
-      <div class="row small">
-        <label>스케일(픽셀→실제): <input id="scaleInput" type="number" value="1" step="0.01"></label>
-      </div>
-      <div class="row">
-        <div id="status" class="hint">모델 로드 상태: 대기 중...</div>
+        <aside class="analysis">
+          <div class="big">스케일(픽셀→단위)</div>
+          <div class="row small">
+            <label>픽셀/단위: <input id="scaleInput" type="number" min="0.0001" step="0.0001" value="100" /></label>
+          </div>
+          <div id="charts">
+            <canvas id="posChart"></canvas>
+            <canvas id="velChart"></canvas>
+          </div>
+        </aside>
       </div>
     </section>
 
-    <section class="workspace">
-      <div class="video-wrap">
-        <video id="video" playsinline controls></video>
-  <img id="framePreview" alt="frame preview" style="display:none;position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;border:1px solid #ddd;border-radius:6px;z-index:2;pointer-events:none;background:#000" />
-        <canvas id="overlay"></canvas>
+    <!-- Tab 2: 프레임 추출 -->
+    <section id="tab-2" class="tab-content" style="display:none;">
+      <div class="controls">
+        <div class="row">
+          <label>FPS: <input id="fpsInput" type="number" min="1" step="1" value="10" /></label>
+          <button id="extractFramesBtn" disabled>프레임 추출 시작</button>
+        </div>
+        <div id="extractProgress" class="row small" style="display:none;">
+          <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;">
+            <div id="progressBar" style="width:0%;height:8px;background:#0ea5ff;"></div>
+          </div>
+          <div id="progressText">0%</div>
+        </div>
+
+        <div class="frame-nav" style="display:none;gap:8px;align-items:center;margin-top:8px;">
+          <button id="prevFrame">◀</button>
+          <span id="frameIdx">Frame 0 / 0</span>
+          <button id="nextFrame">▶</button>
+        </div>
+
+        <div class="hint">추출된 프레임은 상단 영상 영역에 이미지로 표시됩니다.</div>
       </div>
 
-      <aside class="analysis">
-        <h3>분석</h3>
-        <div id="charts">
-          <canvas id="posChart"></canvas>
-          <canvas id="velChart"></canvas>
+      <div class="workspace">
+        <div class="video-wrap">
+          <video playsinline muted></video>
+          <img id="framePreview" alt="frame preview" />
+          <canvas id="overlay"></canvas>
         </div>
-      </aside>
+        <aside class="analysis">
+          <div class="hint">프레임을 확인하고 다음 탭에서 ROI를 지정하세요.</div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Tab 3: ROI 선택 -->
+    <section id="tab-3" class="tab-content" style="display:none;">
+      <div class="controls">
+        <div class="big">이 프레임 ROI 선택</div>
+        <div class="hint">오버레이 캔버스에서 드래그하여 ROI(관심 영역)를 그리면 자동 저장됩니다. 프레임별로 반복하세요.</div>
+        <div class="row">
+          <button id="completeROIs">ROI 선택 완료 (자동 분석 실행)</button>
+        </div>
+      </div>
+
+      <div class="workspace">
+        <div class="video-wrap">
+          <video playsinline muted></video>
+          <img id="framePreview" alt="frame preview" />
+          <canvas id="overlay"></canvas>
+        </div>
+        <aside class="analysis">
+          <div class="hint">ROI가 있는 프레임은 해당 영역을, 없는 프레임은 YOLO로 자동 지정됩니다.</div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Tab 4: 분석/결과 -->
+    <section id="tab-4" class="tab-content" style="display:none;">
+      <div class="controls">
+        <div class="row">
+          <label>신뢰도(0~1): <input id="confInput" type="number" min="0" max="1" step="0.01" value="0.3" /></label>
+          <button id="runDetectBtn">자동 분석</button>
+          <button id="playResultsBtn">결과 재생</button>
+          <button id="exportCSV">CSV 내보내기</button>
+        </div>
+        <div class="hint">분석을 실행하면 그래프가 갱신되고 오버레이에 박스가 그려집니다.</div>
+      </div>
+
+      <div class="workspace">
+        <div class="video-wrap">
+          <video playsinline muted></video>
+          <img id="framePreview" alt="frame preview" />
+          <canvas id="overlay"></canvas>
+        </div>
+        <aside class="analysis">
+          <div id="charts">
+            <canvas id="posChart"></canvas>
+            <canvas id="velChart"></canvas>
+          </div>
+        </aside>
+      </div>
     </section>
 
     <footer>
-      <small>모델 파일은 프로젝트 루트에 있는 <code>yolov8n.onnx</code>를 사용합니다. 로컬에서 실행할 때는 간단한 HTTP 서버로 제공하세요 (예: <code>python -m http.server</code>).</small>
+      모델 파일(<code>yolov8n.onnx</code>)을 프로젝트 루트 또는 <code>./model/</code> 폴더에 두세요.
     </footer>
-  </main>
+  </div>
 
-  <!-- Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
-  <script src="app.js"></script>
+  <!-- JS (상대경로 + 캐시버스터) -->
+  ./app.js?v=20251120-2</script>
 </body>
 </html>
