@@ -10,7 +10,7 @@
 
   <!-- 외부 라이브러리: Chart.js, onnxruntime-web -->
   https://cdn.jsdelivr.net/npm/chart.js</script>
-  https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js</script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime.min.js</script>
 </head>
 <body>
   <div class="app">
@@ -28,7 +28,7 @@
       </div>
     </header>
 
-    <!-- Tab 1: 업로드/카메라 -->
+    <!-- Tab 1 -->
     <section id="tab-1" class="tab-content">
       <div class="controls">
         <div class="row">
@@ -44,7 +44,6 @@
 
       <div class="workspace">
         <div class="video-wrap">
-          <!-- 비디오/프리뷰/오버레이가 같은 영역에 겹쳐 표시됩니다 -->
           <video playsinline muted></video>
           <img id="framePreview" alt="frame preview" />
           <canvas id="overlay"></canvas>
@@ -63,7 +62,7 @@
       </div>
     </section>
 
-    <!-- Tab 2: 프레임 추출 -->
+    <!-- Tab 2 -->
     <section id="tab-2" class="tab-content" style="display:none;">
       <div class="controls">
         <div class="row">
@@ -76,13 +75,11 @@
           </div>
           <div id="progressText">0%</div>
         </div>
-
         <div class="frame-nav" style="display:none;gap:8px;align-items:center;margin-top:8px;">
           <button id="prevFrame">◀</button>
           <span id="frameIdx">Frame 0 / 0</span>
           <button id="nextFrame">▶</button>
         </div>
-
         <div class="hint">추출된 프레임은 상단 영상 영역에 이미지로 표시됩니다.</div>
       </div>
 
@@ -98,11 +95,11 @@
       </div>
     </section>
 
-    <!-- Tab 3: ROI 선택 -->
+    <!-- Tab 3 -->
     <section id="tab-3" class="tab-content" style="display:none;">
       <div class="controls">
         <div class="big">이 프레임 ROI 선택</div>
-        <div class="hint">오버레이 캔버스에서 드래그하여 ROI(관심 영역)를 그리면 자동 저장됩니다. 프레임별로 반복하세요.</div>
+        <div class="hint">오버레이 캔버스에서 드래그하여 ROI(관심 영역)를 그리면 자동 저장됩니다.</div>
         <div class="row">
           <button id="completeROIs">ROI 선택 완료 (자동 분석 실행)</button>
         </div>
@@ -120,7 +117,7 @@
       </div>
     </section>
 
-    <!-- Tab 4: 분석/결과 -->
+    <!-- Tab 4 -->
     <section id="tab-4" class="tab-content" style="display:none;">
       <div class="controls">
         <div class="row">
@@ -153,6 +150,6 @@
   </div>
 
   <!-- JS (상대경로 + 캐시버스터) -->
-  ./app.js?v=20251120-2</script>
+  <script src20251120-2</script>
 </body>
 </html>
