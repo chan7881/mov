@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Video Upload Test</title>
+<style>
+body{margin:0;background:#0b1522;color:#e6eef8;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif}
+.main{max-width:900px;margin:16px auto;padding:12px}
+.video-wrap{position:relative;background:#000;aspect-ratio:16/9;min-height:240px;border-radius:8px;overflow:hidden}
+.video-wrap>video{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+.controls{margin-bottom:12px}
+.file-btn{background:#0b1220;padding:8px 10px;border-radius:8px;cursor:pointer;display:inline-block}
+.file-btn input{display:none}
+</style>
+</head>
+<body>
+<div class="main">
+  <div class="controls">
+    <label class="file-btn"><input type="file" id="videoFile" accept="video/*">비디오 업로드</label>
+  </div>
+  <div class="video-wrap"><video id="vid" playsinline muted></video></div>
+</div>
+<script>
+(function(){
+  var f=document.getElementById('videoFile');
+  var v=document.getElementById('vid');
+  f.addEventListener('change',function(e){
+    var file=e.target.files && e.target.files[0];
+    if(!file) return;
+    var url=URL.createObjectURL(file);
+    v.srcObject=null; v.src=url; v.controls=true; v.muted=false; v.playsInline=true;
+    v.addEventListener('loadedmetadata',function once(){ v.removeEventListener('loadedmetadata',once); v.play().catch(function(){}); },{once:true});
+  });
+})();
+</script>
+</body>
+</html>
