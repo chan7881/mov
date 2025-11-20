@@ -3,189 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Motion Tracker (YOLO ONNX)</title>
+<title>Motion Tracker (Test)</title>
 <style>
-:root{ --bg:#0f1724; --card:#0b1220; --accent:#0ea5ff; --text:#e6eef8; }
-*{ box-sizing:border-box; }
-html,body{ height:100%; margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif; background:linear-gradient(180deg,#071024,#0b1522); color:var(--text); }
-.app{ max-width:1100px; margin:12px auto; padding:12px; }
-header h1{ margin:0; font-size:1.4rem; }
-.subtitle{ margin:4px 0 12px; color:#bcd7f7; }
-.tabs{ display:flex; gap:6px; margin-bottom:10px; }
-.tab{ background:rgba(255,255,255,0.08); padding:8px 10px; border-radius:8px; cursor:pointer; }
-.tab.active{ background:linear-gradient(90deg,#06b6d4,#4fd1c5); color:#002733; }
-.controls{ background:rgba(255,255,255,0.06); padding:10px; border-radius:10px; margin-bottom:12px; }
-.row{ display:flex; gap:8px; flex-wrap:wrap; }
-.row.small{ margin-top:8px; font-size:0.9rem; }
-.file-btn{ background:var(--card); padding:8px 10px; border-radius:8px; cursor:pointer; }
-.file-btn input{ display:none; }
-button{ background:var(--accent); border:0; color:#04233a; padding:8px 10px; border-radius:8px; cursor:pointer; }
-.workspace{ display:flex; gap:12px; align-items:flex-start; }
-.video-wrap{ position:relative; flex:1; min-width:260px; border-radius:8px; overflow:hidden; background:#000; aspect-ratio:16/9; min-height:240px; max-height:70vh; }
-.video-wrap>video,.video-wrap>img,.video-wrap>canvas{ position:absolute; left:0; top:0; width:100%; height:100%; display:block; }
-video{ z-index:1; }
-#framePreview{ z-index:2; pointer-events:none; object-fit:contain; }
-#overlay{ z-index:3; touch-action:none; }
-#framePreview,#overlay{ display:none; visibility:hidden; }
-.analysis{ width:320px; background:rgba(255,255,255,0.06); padding:10px; border-radius:8px; }
-#charts canvas{ width:100% !important; height:200px; }
-footer{ margin-top:12px; color:#9fb7d9; }
-.tab-content{ padding:8px; background:rgba(255,255,255,0.03); border-radius:8px; }
-.big{ background:#06b6d4; color:#002733; padding:10px 12px; border-radius:8px; font-weight:600; }
-.frame-nav{ display:none; gap:8px; align-items:center; margin-top:8px; }
-.frame-nav button{ padding:6px 10px; }
-@media (max-width:800px){ .workspace{ flex-direction:column; } .analysis{ width:100%; }
-}
+  body{margin:0;background:#0b1522;color:#e6eef8;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans KR',sans-serif}
+  .app{max-width:900px;margin:16px auto;padding:12px}
+  .card{background:rgba(255,255,255,0.06);padding:12px;border-radius:8px;margin-bottom:12px}
+  .video-wrap{position:relative;background:#000;aspect-ratio:16/9;min-height:260px;border-radius:8px;overflow:hidden}
+  .video-wrap>video{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .file-btn{background:#0b1220;padding:8px 10px;border-radius:8px;cursor:pointer;display:inline-block}
+  .file-btn input{display:none}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
 </head>
 <body>
 <div class="app">
-  <header>
-    <h1>Motion Tracker (YOLO ONNX)</h1>
-    <div class="subtitle">동영상에서 물체를 지정해 운동을 분석합니다. (모바일 지원)</div>
-    <div id="status">모델 로드 상태: 대기 중...</div>
-    <div class="tabs">
-      <button id="stepCamera" class="tab active">촬영/업로드</button>
-      <button id="stepExtract" class="tab">프레임 추출</button>
-      <button id="stepROI" class="tab">ROI 선택</button>
-      <button id="stepAnalyze" class="tab">분석/결과</button>
+  <div class="card">
+    <h1 style="margin:0;font-size:20px">Motion Tracker (Test)</h1>
+    <div id="status" style="margin-top:6px;font-size:13px;color:#a9c6e9">상태: 준비됨</div>
+  </div>
+  <div class="card">
+    <div class="row">
+      <label class="file-btn"><input type="file" id="videoFile" accept="video/*">비디오 업로드</label>
+      <button id="modelCheck">모델 확인</button>
     </div>
-  </header>
-  <section id="tab-1" class="tab-content">
-    <div class="controls">
-      <div class="row">
-        <label class="file-btn"><input type="file" id="videoFile" accept="video/*">비디오 업로드</label>
-        <button id="startCamera">카메라 켜기</button>
-        <button id="recordToggle" style="display:none;" disabled>녹화 시작</button>
-      </div>
-      <div class="hint">카메라로 촬영하거나 비디오 파일을 업로드하세요.</div>
-    </div>
-    <div class="workspace">
-      <div class="video-wrap">
-        <video playsinline muted></video>
-        <img id="framePreview" alt="frame preview" />
-        <canvas id="overlay"></canvas>
-      </div>
-      <aside class="analysis">
-        <div class="big">스케일(픽셀→단위)</div>
-        <div class="row small">
-          <label>픽셀/단위: <input id="scaleInput" type="number" min="0.0001" step="0.0001" value="100" /></label>
-        </div>
-        <div id="charts">
-          <canvas id="posChart"></canvas>
-          <canvas id="velChart"></canvas>
-        </div>
-      </aside>
-    </div>
-  </section>
-  <section id="tab-2" class="tab-content" style="display:none;">
-    <div class="controls">
-      <div class="row">
-        <label>FPS: <input id="fpsInput" type="number" min="1" step="1" value="10" /></label>
-        <button id="extractFramesBtn" disabled>프레임 추출 시작</button>
-      </div>
-      <div id="extractProgress" class="row small" style="display:none;">
-        <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;">
-          <div id="progressBar" style="width:0%;height:8px;background:#0ea5ff;"></div>
-        </div>
-        <div id="progressText">0%</div>
-      </div>
-      <div class="frame-nav">
-        <button id="prevFrame">◀</button>
-        <span id="frameIdx">Frame 0 / 0</span>
-        <button id="nextFrame">▶</button>
-      </div>
-      <div class="hint">추출된 프레임은 상단 영상 영역에 이미지로 표시됩니다.</div>
-    </div>
-    <div class="workspace">
-      <div class="video-wrap">
-        <video playsinline muted></video>
-        <img id="framePreview" alt="frame preview" />
-        <canvas id="overlay"></canvas>
-      </div>
-      <aside class="analysis">
-        <div class="hint">프레임을 확인하고 다음 탭에서 ROI를 지정하세요.</div>
-      </aside>
-    </div>
-  </section>
-  <section id="tab-3" class="tab-content" style="display:none;">
-    <div class="controls">
-      <div class="big">이 프레임 ROI 선택</div>
-      <div class="hint">오버레이 캔버스에서 드래그하여 ROI(관심 영역)를 그리면 자동 저장됩니다.</div>
-      <div class="row"><button id="completeROIs">ROI 선택 완료 (자동 분석 실행)</button></div>
-    </div>
-    <div class="workspace">
-      <div class="video-wrap">
-        <video playsinline muted></video>
-        <img id="framePreview" alt="frame preview" />
-        <canvas id="overlay"></canvas>
-      </div>
-      <aside class="analysis"><div class="hint">ROI가 없는 프레임은 YOLO로 자동 지정됩니다.</div></aside>
-    </div>
-  </section>
-  <section id="tab-4" class="tab-content" style="display:none;">
-    <div class="controls">
-      <div class="row">
-        <label>신뢰도(0~1): <input id="confInput" type="number" min="0" max="1" step="0.01" value="0.3" /></label>
-        <button id="runDetectBtn">자동 분석</button>
-        <button id="playResultsBtn">결과 재생</button>
-        <button id="exportCSV">CSV 내보내기</button>
-      </div>
-      <div class="hint">분석을 실행하면 그래프가 갱신되고 오버레이에 박스가 그려집니다.</div>
-    </div>
-    <div class="workspace">
-      <div class="video-wrap">
-        <video playsinline muted></video>
-        <img id="framePreview" alt="frame preview" />
-        <canvas id="overlay"></canvas>
-      </div>
-      <aside class="analysis">
-        <div id="charts"><canvas id="posChart"></canvas><canvas id="velChart"></canvas></div>
-      </aside>
-    </div>
-  </section>
-  <footer>모델 파일(<code>yolov8n.onnx</code>)을 프로젝트 루트 또는 <code>./model/</code>에 두세요.</footer>
+  </div>
+  <div class="video-wrap"><video id="vid" playsinline muted></video></div>
 </div>
 <script>
-// minimal JS (ES5 only)
-function $(id){ return document.getElementById(id); }
-var video=document.querySelector('.video-wrap > video');
-var overlay=$('overlay');
-var framePreview=$('framePreview');
-var statusEl=$('status');
-var videoFile=$('videoFile'), extractFramesBtn=$('extractFramesBtn');
-var stepCamera=$('stepCamera'), stepExtract=$('stepExtract'), stepROI=$('stepROI'), stepAnalyze=$('stepAnalyze');
-var fpsInput=$('fpsInput'), confInput=$('confInput'), scaleInput=$('scaleInput');
-var prevFrameBtn=$('prevFrame'), nextFrameBtn=$('nextFrame'), frameIdxEl=$('frameIdx'), extractProgress=$('extractProgress'), progressBar=$('progressBar'), progressText=$('progressText');
-function switchTab(n){ var ids=[1,2,3,4]; for(var i=0;i<ids.length;i++){ var id=ids[i]; var panel=document.getElementById('tab-'+id); var btn=document.getElementById('step'+(id===1?'Camera':(id===2?'Extract':(id===3?'ROI':'Analyze')))); if(panel) panel.style.display=(id===n)?'':'none'; if(btn){ if(id===n) btn.classList.add('active'); else btn.classList.remove('active'); } } }
-stepCamera.onclick=function(){ switchTab(1); };
-stepExtract.onclick=function(){ switchTab(2); };
-stepROI.onclick=function(){ switchTab(3); };
-stepAnalyze.onclick=function(){ switchTab(4); };
-function numOr(v,def){ var n=Number(v); return isFinite(n)?n:def; }
-function getFps(){ return Math.max(1, numOr(fpsInput.value, 10)); }
-function resizeOverlay(){ if(!overlay||!video) return; var dpr=window.devicePixelRatio||1; var w=Math.max(1,Math.round(video.clientWidth*dpr)); var h=Math.max(1,Math.round(video.clientHeight*dpr)); overlay.width=w; overlay.height=h; overlay.style.width=video.clientWidth+'px'; overlay.style.height=video.clientHeight+'px'; }
-window.addEventListener('resize',resizeOverlay); video.addEventListener('loadedmetadata',resizeOverlay);
-videoFile.onchange=function(e){ var f=e.target.files&&e.target.files[0]; if(!f) return; var url=URL.createObjectURL(f); framePreview.style.display='none'; framePreview.style.visibility='hidden'; overlay.style.display='none'; overlay.style.visibility='hidden'; video.srcObject=null; video.src=url; video.style.display='block'; video.style.visibility='visible'; video.controls=true; video.muted=false; video.playsInline=true; video.addEventListener('loadedmetadata',function once(){ video.removeEventListener('loadedmetadata',once); video.play().catch(function(){}); },{once:true}); extractFramesBtn.disabled=false; switchTab(2); };
-var currentStream=null, mediaRecorder=null, recordedChunks=[];
-var startCameraBtn=$('startCamera'), recordToggleBtn=$('recordToggle');
-startCameraBtn.onclick=function(){ navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false}).then(function(s){ currentStream=s; video.srcObject=s; video.muted=true; video.playsInline=true; video.controls=false; return video.play().catch(function(){}); }).then(function(){ recordToggleBtn.style.display=''; recordToggleBtn.disabled=false; }).catch(function(err){ alert('카메라 접근 실패: '+err.message); }); };
-recordToggleBtn.onclick=function(){ if(!currentStream) return; if(!mediaRecorder||mediaRecorder.state==='inactive'){ recordedChunks=[]; mediaRecorder=new MediaRecorder(currentStream); mediaRecorder.ondataavailable=function(e){ if(e.data&&e.data.size) recordedChunks.push(e.data); }; mediaRecorder.onstop=function(){ var blob=new Blob(recordedChunks,{type:'video/webm'}); var url=URL.createObjectURL(blob); video.srcObject=null; video.src=url; video.muted=false; video.play().catch(function(){}); extractFramesBtn.disabled=false; }; mediaRecorder.start(); recordToggleBtn.textContent='녹화 중지'; } else { mediaRecorder.stop(); recordToggleBtn.textContent='녹화 시작'; } };
-var isExtracting=false, extractedFrames=[], currentFrameIndex=0;
-function setProgress(p){ if(progressBar) progressBar.style.width=p+'%'; if(progressText) progressText.textContent=p+'%'; }
-extractFramesBtn.onclick=function(){ if(isExtracting) return; var srcUrl=video.currentSrc||video.src; if(!srcUrl) return; isExtracting=true; extractedFrames=[]; currentFrameIndex=0; if(extractProgress) extractProgress.style.display=''; setProgress(0); var cap=document.createElement('video'); cap.muted=true; cap.preload='auto'; cap.crossOrigin='anonymous'; cap.src=srcUrl; cap.addEventListener('loadedmetadata',function(){ var fps=getFps(); var duration=cap.duration||video.duration||0; var total=Math.max(1,Math.floor(duration*fps)); var dpr=window.devicePixelRatio||1; var cssW=cap.videoWidth||640; var cssH=cap.videoHeight||360; var i=0; function step(){ if(i>=total){ if(extractProgress) extractProgress.style.display='none'; setProgress(100); framePreview.style.display=''; framePreview.style.visibility='visible'; overlay.style.display=''; overlay.style.visibility='visible'; showFrame(0); var navs=document.querySelectorAll('.frame-nav'); for(var k=0;k<navs.length;k++) navs[k].style.display='flex'; isExtracting=false; extractFramesBtn.disabled=false; return; } var t=Math.min(duration,i/fps); cap.currentTime=t; cap.addEventListener('seeked',function once(){ cap.removeEventListener('seeked',once); var c=document.createElement('canvas'); c._cssWidth=cssW; c._cssHeight=cssH; c._dpr=dpr; c.width=Math.round(cssW*dpr); c.height=Math.round(cssH*dpr); var ctx=c.getContext('2d'); try{ ctx.setTransform(dpr,0,0,dpr,0,0); ctx.drawImage(cap,0,0,cssW,cssH); }catch(e){ ctx.fillStyle='#333'; ctx.fillRect(0,0,cssW,cssH); } extractedFrames.push(c); setProgress(Math.round(((i+1)/total)*100)); i++; step(); },{once:true}); }
-step(); },{once:true}); };
-function showFrame(idx){ if(!extractedFrames.length) return; currentFrameIndex=Math.max(0,Math.min(idx,extractedFrames.length-1)); var c=extractedFrames[currentFrameIndex]; var displayW=framePreview.clientWidth||video.clientWidth||overlay.clientWidth||640; var displayH=framePreview.clientHeight||video.clientHeight||overlay.clientHeight||360; var dpr=window.devicePixelRatio||1; overlay.width=Math.max(1,Math.round(displayW*dpr)); overlay.height=Math.max(1,Math.round(displayH*dpr)); overlay.style.width=displayW+'px'; overlay.style.height=displayH+'px'; var ctx=overlay.getContext('2d'); try{ ctx.setTransform(1,0,0,1,0,0); }catch(e){} ctx.clearRect(0,0,overlay.width,overlay.height); ctx.setTransform(dpr,0,0,dpr,0,0); try{ ctx.drawImage(c,0,0,c.width,c.height,0,0,displayW,displayH); }catch(e){} try{ framePreview.src=c.toDataURL('image/png'); framePreview.style.width=displayW+'px'; framePreview.style.height=displayH+'px'; framePreview.style.objectFit='contain'; framePreview.style.display=''; framePreview.style.visibility='visible'; overlay.style.display=''; overlay.style.visibility='visible'; }catch(e){} if(frameIdxEl) frameIdxEl.textContent='Frame '+(currentFrameIndex+1)+' / '+extractedFrames.length; }
-var frameROIs=[], roi=null, isDrawingROI=false, startX=0, startY=0;
-function overlayToCanvasRect(ov){ var c=extractedFrames[currentFrameIndex]; var dpr=window.devicePixelRatio||1; var srcCssW=c?(c._cssWidth||Math.round((c.width||overlay.clientWidth)/dpr)):overlay.clientWidth; var srcCssH=c?(c._cssHeight||Math.round((c.height||overlay.clientHeight)/dpr)):overlay.clientHeight; var sx=srcCssW/overlay.clientWidth; var sy=srcCssH/overlay.clientHeight; return {x:ov.x*sx,y:ov.y*sy,w:ov.w*sx,h:ov.h*sy}; }
-overlay.addEventListener('pointerdown',function(e){ var r=overlay.getBoundingClientRect(); startX=e.clientX-r.left; startY=e.clientY-r.top; roi={x:startX,y:startY,w:0,h:0}; isDrawingROI=true; });
-overlay.addEventListener('pointermove',function(e){ if(!isDrawingROI||!roi) return; var r=overlay.getBoundingClientRect(); var x=e.clientX-r.left; var y=e.clientY-r.top; roi.w=x-roi.x; roi.h=y-roi.y; if(roi.w<0){ roi.x=x; roi.w=Math.abs(roi.w); } if(roi.h<0){ roi.y=y; roi.h=Math.abs(roi.h); } });
-overlay.addEventListener('pointerup',function(){ if(!isDrawingROI||!roi) return; isDrawingROI=false; var canvasROI=overlayToCanvasRect(roi); frameROIs[currentFrameIndex]=canvasROI; });
-var status=$('status');
-function loadModel(){ if(status) status.textContent='모델 로드 상태: 로딩 시도 중...'; var list=['./yolov8n.onnx','./model/yolov8n.onnx']; (function tryNext(i){ if(i>=list.length){ if(status) status.innerHTML='모델 로드 상태: 실패 — <code>yolov8n.onnx</code>를 루트 또는 <code>./model/</code>에 두세요.'; return; } fetch(list[i]).then(function(resp){ if(!resp.ok) throw new Error('HTTP '+resp.status); return resp.arrayBuffer(); }).then(function(ab){ return ort.InferenceSession.create(ab,{executionProviders:['wasm','webgl']}); }).then(function(sess){ window._sess=sess; if(status) status.textContent='모델 로드 상태: 성공 ('+list[i]+')'; }).catch(function(){ tryNext(i+1); }); })(0); }
-loadModel();
+(function(){
+  'use strict';
+  var f=document.getElementById('videoFile');
+  var v=document.getElementById('vid');
+  var s=document.getElementById('status');
+  var m=document.getElementById('modelCheck');
+
+  f.addEventListener('change',function(e){
+    var file=e.target.files && e.target.files[0];
+    if(!file){ s.textContent='상태: 파일 없음'; return; }
+    var url=URL.createObjectURL(file);
+    v.srcObject=null; v.src=url; v.controls=true; v.muted=false; v.playsInline=true;
+    v.addEventListener('loadedmetadata',function once(){ v.removeEventListener('loadedmetadata',once); s.textContent='상태: 영상 로드됨'; v.play().catch(function(){}); },{once:true});
+  });
+
+  m.addEventListener('click',function(){
+    s.textContent='상태: 모델 로드 시도...';
+    var p=['./yolov8n.onnx','./model/yolov8n.onnx'];
+    (function tryAt(i){
+      if(i>=p.length){ s.textContent='상태: 모델 실패'; return; }
+      fetch(p[i]).then(function(resp){ if(!resp.ok) throw new Error('HTTP '+resp.status); return resp.arrayBuffer(); })
+      .then(function(){ s.textContent='상태: 모델 파일 찾음 ('+p[i]+')'; })
+      .catch(function(){ tryAt(i+1); });
+    })(0);
+  });
+})();
 </script>
 </body>
 </html>
