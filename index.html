@@ -5,12 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Motion Tracker (YOLO ONNX)</title>
 
-  <!-- CSS (상대경로 + 캐시버스터) -->
-  ./styles.css?v=20251120-2
-
-  <!-- 외부 라이브러리: Chart.js, onnxruntime-web -->
+  <!-- CSS: 상대경로 + 캐시버스터 (중요: 반드시 link 태그!) -->
+  <link rel="stylesheet" href="./styles.css리: Chart.js, onnxruntime-web (중요: 반드시 script 태그!) -->
   https://cdn.jsdelivr.net/npm/chart.js</script>
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime.min.js</script>
+  https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js</script>
 </head>
 <body>
   <div class="app">
@@ -18,8 +16,6 @@
       <h1>Motion Tracker (YOLO ONNX)</h1>
       <div class="subtitle">동영상에서 물체를 지정해 운동을 분석합니다. (모바일 지원)</div>
       <div id="status">모델 로드 상태: 대기 중...</div>
-
-      <!-- 상단 탭 -->
       <div class="tabs">
         <button id="stepCamera" class="tab active">촬영/업로드</button>
         <button id="stepExtract" class="tab">프레임 추출</button>
@@ -48,7 +44,6 @@
           <img id="framePreview" alt="frame preview" />
           <canvas id="overlay"></canvas>
         </div>
-
         <aside class="analysis">
           <div class="big">스케일(픽셀→단위)</div>
           <div class="row small">
@@ -149,7 +144,7 @@
     </footer>
   </div>
 
-  <!-- JS (상대경로 + 캐시버스터) -->
-  <script src20251120-2</script>
+  <!-- JS: 상대경로 + 캐시버스터 (중요: 반드시 script 태그!) -->
+  ./app.js?v=20251120-3</script>
 </body>
 </html>
