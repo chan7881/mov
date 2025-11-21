@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Motion Tracker (YOLO ONNX)</title>
-  <link rel="stylesheet" href="./styles.css?v=20251120-9" />
+  <link rel="stylesheet" href="./styles.css?v=20251120-10" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
 </head>
@@ -25,7 +25,10 @@
     <section id="controls" class="tab-content">
       <div id="controls-1" class="controls">
         <div class="row">
-          <label class="file-btn"><input type="file" id="videoFile" accept="video/*">비디오 업로드</label>
+          <label class="file-btn">
+            <input type="file" id="videoFile" accept="video/*" capture="camcorder">
+            비디오 업로드
+          </label>
           <button id="startCamera">카메라 켜기</button>
           <button id="recordToggle" style="display:none;" disabled>녹화 시작</button>
         </div>
@@ -70,7 +73,7 @@
 
     <section class="workspace">
       <div class="video-wrap">
-        <video id="videoMain" playsinline muted></video>
+        <video id="videoMain" playsinline muted crossorigin="anonymous"></video>
         <img id="framePreview" alt="frame preview" />
         <canvas id="overlay"></canvas>
       </div>
@@ -83,6 +86,6 @@
     <footer>모델 파일(<code>yolov8n.onnx</code>)을 페이지 폴더 또는 <code>./model/</code>에 두세요.</footer>
   </div>
 
-  <script src="./app.js?v=20251120-9"></script>
+  <script src="./app.js?v=20251120-10"></script>
 </body>
 </html>

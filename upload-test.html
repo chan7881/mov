@@ -4,8 +4,8 @@
 .video>video{position:absolute;left:0;top:0;width:100%;height:100%;display:block}</style>
 <div class="wrap">
   <label style="background:#0b1220;padding:8px 10px;border-radius:8px;cursor:pointer;display:inline-block">
-    <input type="file" id="f" accept="video/*" style="display:none">비디오 업로드
+    <input type="file" id="f" accept="video/*" capture="camcorder" style="display:none">비디오 업로드
   </label>
-  <div class="video"><video id="v" playsinline muted></video></div>
+  <div class="video"><video id="v" playsinline muted crossorigin="anonymous"></video></div>
 </div>
 <script>document.getElementById('f').addEventListener('change',function(e){var file=e.target.files&&e.target.files[0];if(!file)return;var url=URL.createObjectURL(file);var v=document.getElementById('v');v.srcObject=null;v.src=url;v.controls=true;v.muted=false;v.playsInline=true;v.addEventListener('loadedmetadata',function once(){v.removeEventListener('loadedmetadata',once);v.play().catch(function(){});},{once:true});});</script>

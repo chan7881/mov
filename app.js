@@ -1,7 +1,8 @@
 
-// Motion Tracker App — clean ASCII, DOMContentLoaded wrapper
+// Motion Tracker — clean ASCII, DOMContentLoaded wrapper, upload/camera fixes
 
 document.addEventListener('DOMContentLoaded', function(){
+  'use strict';
   // Elements
   var video = document.getElementById('videoMain');
   var overlay = document.getElementById('overlay');
@@ -75,12 +76,12 @@ document.addEventListener('DOMContentLoaded', function(){
   tabBtn3.addEventListener('click', function(){ switchTab(3); });
   tabBtn4.addEventListener('click', function(){ switchTab(4); });
 
-  // Upload
+  // Upload (fix: ensure blob URL + controls)
   if(videoFile){ videoFile.addEventListener('change', function(e){ var f=e.target.files&&e.target.files[0]; if(!f) return; var url=URL.createObjectURL(f); framePreview.style.display='none'; framePreview.style.visibility='hidden'; overlay.style.display='none'; overlay.style.visibility='hidden'; video.srcObject=null; video.src=url; video.style.display='block'; video.style.visibility='visible'; video.controls=true; video.muted=false; video.playsInline=true; video.addEventListener('loadedmetadata', function once(){ video.removeEventListener('loadedmetadata', once); resizeOverlay(); video.play().catch(function(){}); }, {once:true}); if(extractFramesBtn) extractFramesBtn.disabled=false; switchTab(2); }); }
 
-  // Camera
-  if(startCameraBtn){ startCameraBtn.addEventListener('click', function(){ navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false }).then(function(s){ currentStream=s; video.srcObject=s; video.muted=true; video.playsInline=true; video.controls=false; return video.play().catch(function(){}); }).then(function(){ recordToggleBtn.style.display=''; recordToggleBtn.disabled=false; }).catch(function(err){ alert('카메라 접근 실패: '+err.message); }); }); }
-  if(recordToggleBtn){ recordToggleBtn.addEventListener('click', function(){ if(!currentStream) return; if(!mediaRecorder||mediaRecorder.state==='inactive'){ recordedChunks=[]; mediaRecorder=new MediaRecorder(currentStream); mediaRecorder.ondataavailable=function(e){ if(e.data&&e.data.size) recordedChunks.push(e.data); }; mediaRecorder.onstop=function(){ var blob=new Blob(recordedChunks,{type:'video/webm'}); var url=URL.createObjectURL(blob); video.srcObject=null; video.src=url; video.muted=false; video.play().catch(function(){}); if(extractFramesBtn) extractFramesBtn.disabled=false; switchTab(2); }; mediaRecorder.start(); recordToggleBtn.textContent='녹화 중지'; } else { mediaRecorder.stop(); recordToggleBtn.textContent='녹화 시작'; } }); }
+  // Camera (fix: handle no MediaRecorder)
+  if(startCameraBtn){ startCameraBtn.addEventListener('click', function(){ navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false }).then(function(s){ currentStream=s; video.srcObject=s; video.muted=true; video.playsInline=true; video.controls=false; return video.play().catch(function(){}); }).then(function(){ if(typeof MediaRecorder!== 'undefined'){ recordToggleBtn.style.display=''; recordToggleBtn.disabled=false; } }).catch(function(err){ alert('카메라 접근 실패: '+err.message); }); }); }
+  if(recordToggleBtn){ recordToggleBtn.addEventListener('click', function(){ if(!currentStream) return; if(typeof MediaRecorder=== 'undefined'){ alert('이 브라우저는 녹화를 지원하지 않습니다.'); return; } if(!mediaRecorder||mediaRecorder.state==='inactive'){ recordedChunks=[]; mediaRecorder=new MediaRecorder(currentStream); mediaRecorder.ondataavailable=function(e){ if(e.data&&e.data.size) recordedChunks.push(e.data); }; mediaRecorder.onstop=function(){ var blob=new Blob(recordedChunks,{type:'video/webm'}); var url=URL.createObjectURL(blob); video.srcObject=null; video.src=url; video.muted=false; video.play().catch(function(){}); if(extractFramesBtn) extractFramesBtn.disabled=false; switchTab(2); }; mediaRecorder.start(); recordToggleBtn.textContent='녹화 중지'; } else { mediaRecorder.stop(); recordToggleBtn.textContent='녹화 시작'; } }); }
 
   // Frame extraction
   function setExtractUIRunning(r){ if(extractProgress) extractProgress.style.display=r?'':'none'; }
@@ -91,14 +92,14 @@ document.addEventListener('DOMContentLoaded', function(){
   if(prevFrameBtn){ prevFrameBtn.addEventListener('click', function(){ if(!extractedFrames.length) return; showFrame(Math.max(0, currentFrameIndex-1)); }); }
   if(nextFrameBtn){ nextFrameBtn.addEventListener('click', function(){ if(!extractedFrames.length) return; showFrame(Math.min(extractedFrames.length-1, currentFrameIndex+1)); }); }
 
-  // ROI drawing
-  function overlayToCanvasRect(ov){ var c=extractedFrames[currentFrameIndex]; var dpr=window.devicePixelRatio||1; var srcCssW=c?(c._cssWidth||Math.round((c.width||overlay.clientWidth)/dpr)):overlay.clientWidth; var srcCssH=c?(c._cssHeight||Math.round((c.height||overlay.clientHeight)/dpr)):overlay.clientHeight; var sx=srcCssW/overlay.clientWidth; var sy=srcCssH/overlay.clientHeight; return {x:ov.x*sx, y:ov.y*sy, w:ov.w*sx, h:ov.h*sx}; }
+  // ROI drawing (fix: use sy for height scale)
+  function overlayToCanvasRect(ov){ var c=extractedFrames[currentFrameIndex]; var dpr=window.devicePixelRatio||1; var srcCssW=c?(c._cssWidth||Math.round((c.width||overlay.clientWidth)/dpr)):overlay.clientWidth; var srcCssH=c?(c._cssHeight||Math.round((c.height||overlay.clientHeight)/dpr)):overlay.clientHeight; var sx=srcCssW/overlay.clientWidth; var sy=srcCssH/overlay.clientHeight; return {x:ov.x*sx, y:ov.y*sy, w:ov.w*sx, h:ov.h*sy}; }
   overlay.addEventListener('pointerdown', function(e){ var r=overlay.getBoundingClientRect(); startX=e.clientX-r.left; startY=e.clientY-r.top; roi={x:startX,y:startY,w:0,h:0}; isDrawingROI=true; drawOverlayFrame(extractedFrames[currentFrameIndex]||null); });
   overlay.addEventListener('pointermove', function(e){ if(!isDrawingROI||!roi) return; var r=overlay.getBoundingClientRect(); var x=e.clientX-r.left; var y=e.clientY-r.top; roi.w=x-roi.x; roi.h=y-roi.y; if(roi.w<0){ roi.x=x; roi.w=Math.abs(roi.w); } if(roi.h<0){ roi.y=y; roi.h=Math.abs(roi.h); } drawOverlayFrame(extractedFrames[currentFrameIndex]||null); });
   overlay.addEventListener('pointerup', function(){ if(!isDrawingROI||!roi) return; isDrawingROI=false; var saved=overlayToCanvasRect(roi); frameROIs[currentFrameIndex]=saved; switchTab(4); });
   if(completeROIsBtn){ completeROIsBtn.addEventListener('click', function(){ switchTab(4); if(runDetectBtn) runDetectBtn.click(); }); }
 
-  // Model load
+  // Model load (strict root/model only)
   function loadModel(){ if(statusEl) statusEl.textContent='모델 로드 상태: 로딩 시도 중...'; var paths=['./yolov8n.onnx','./model/yolov8n.onnx']; (function tryNext(i){ if(i>=paths.length){ modelLoaded=false; if(statusEl) statusEl.innerHTML='모델 로드 상태: 실패 — yolov8n.onnx 위치 확인'; return; } fetch(paths[i]).then(function(resp){ if(!resp.ok) throw new Error('HTTP '+resp.status); return resp.arrayBuffer(); }).then(function(ab){ return ort.InferenceSession.create(ab,{executionProviders:['wasm','webgl']}); }).then(function(sess){ modelSession=sess; modelLoaded=true; if(statusEl) statusEl.textContent='모델 로드 상태: 성공 ('+paths[i]+')'; }).catch(function(){ tryNext(i+1); }); })(0); }
   loadModel();
 
