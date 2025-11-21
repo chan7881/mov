@@ -1,61 +1,88 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Motion Tracker (Test)</title>
-<style>
-  body{margin:0;background:#0b1522;color:#e6eef8;font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans KR',sans-serif}
-  .app{max-width:900px;margin:16px auto;padding:12px}
-  .card{background:rgba(255,255,255,0.06);padding:12px;border-radius:8px;margin-bottom:12px}
-  .video-wrap{position:relative;background:#000;aspect-ratio:16/9;min-height:260px;border-radius:8px;overflow:hidden}
-  .video-wrap>video{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
-  .row{display:flex;gap:8px;flex-wrap:wrap}
-  .file-btn{background:#0b1220;padding:8px 10px;border-radius:8px;cursor:pointer;display:inline-block}
-  .file-btn input{display:none}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Motion Tracker (YOLO ONNX)</title>
+  <link rel="stylesheet" href="./styles.css?v=20251120-7" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
 </head>
 <body>
-<div class="app">
-  <div class="card">
-    <h1 style="margin:0;font-size:20px">Motion Tracker (Test)</h1>
-    <div id="status" style="margin-top:6px;font-size:13px;color:#a9c6e9">상태: 준비됨</div>
-  </div>
-  <div class="card">
-    <div class="row">
-      <label class="file-btn"><input type="file" id="videoFile" accept="video/*">비디오 업로드</label>
-      <button id="modelCheck">모델 확인</button>
-    </div>
-  </div>
-  <div class="video-wrap"><video id="vid" playsinline muted></video></div>
-</div>
-<script>
-(function(){
-  'use strict';
-  var f=document.getElementById('videoFile');
-  var v=document.getElementById('vid');
-  var s=document.getElementById('status');
-  var m=document.getElementById('modelCheck');
+  <div class="app">
+    <header>
+      <h1>Motion Tracker (YOLO ONNX)</h1>
+      <div class="subtitle">동영상에서 물체를 지정해 운동을 분석합니다. (모바일 지원)</div>
+      <div id="status">모델 로드 상태: 대기 중...</div>
+      <div class="tabs">
+        <button id="tabBtn1" class="tab active">촬영/업로드</button>
+        <button id="tabBtn2" class="tab">프레임 추출</button>
+        <button id="tabBtn3" class="tab">ROI 선택</button>
+        <button id="tabBtn4" class="tab">분석/결과</button>
+      </div>
+    </header>
 
-  f.addEventListener('change',function(e){
-    var file=e.target.files && e.target.files[0];
-    if(!file){ s.textContent='상태: 파일 없음'; return; }
-    var url=URL.createObjectURL(file);
-    v.srcObject=null; v.src=url; v.controls=true; v.muted=false; v.playsInline=true;
-    v.addEventListener('loadedmetadata',function once(){ v.removeEventListener('loadedmetadata',once); s.textContent='상태: 영상 로드됨'; v.play().catch(function(){}); },{once:true});
-  });
+    <section id="controls" class="tab-content">
+      <div id="controls-1" class="controls">
+        <div class="row">
+          <label class="file-btn"><input type="file" id="videoFile" accept="video/*">비디오 업로드</label>
+          <button id="startCamera">카메라 켜기</button>
+          <button id="recordToggle" style="display:none;" disabled>녹화 시작</button>
+        </div>
+        <div class="hint">카메라로 촬영하거나 비디오 파일을 업로드하세요.</div>
+      </div>
 
-  m.addEventListener('click',function(){
-    s.textContent='상태: 모델 로드 시도...';
-    var p=['./yolov8n.onnx','./model/yolov8n.onnx'];
-    (function tryAt(i){
-      if(i>=p.length){ s.textContent='상태: 모델 실패'; return; }
-      fetch(p[i]).then(function(resp){ if(!resp.ok) throw new Error('HTTP '+resp.status); return resp.arrayBuffer(); })
-      .then(function(){ s.textContent='상태: 모델 파일 찾음 ('+p[i]+')'; })
-      .catch(function(){ tryAt(i+1); });
-    })(0);
-  });
-})();
-</script>
+      <div id="controls-2" class="controls" style="display:none;">
+        <div class="row">
+          <label>FPS: <input id="fpsInput" type="number" min="1" step="1" value="10" /></label>
+          <button id="extractFramesBtn" disabled>프레임 추출 시작</button>
+        </div>
+        <div id="extractProgress" class="row small" style="display:none;">
+          <div style="flex:1;background:rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;">
+            <div id="progressBar" style="width:0%;height:8px;background:#0ea5ff;"></div>
+          </div>
+          <div id="progressText">0%</div>
+        </div>
+        <div class="frame-nav" id="frameNav" style="display:none;">
+          <button id="prevFrame">◀</button>
+          <span id="frameIdx">Frame 0 / 0</span>
+          <button id="nextFrame">▶</button>
+        </div>
+        <div class="hint">추출된 프레임은 영상 영역에 이미지로 표시됩니다.</div>
+      </div>
+
+      <div id="controls-3" class="controls" style="display:none;">
+        <div class="big">ROI 선택</div>
+        <div class="hint">오버레이 캔버스에서 드래그하여 ROI(관심 영역)를 그리면 해당 프레임에 저장됩니다.</div>
+        <div class="row"><button id="completeROIs">ROI 선택 완료 (자동 분석 실행)</button></div>
+      </div>
+
+      <div id="controls-4" class="controls" style="display:none;">
+        <div class="row">
+          <label>신뢰도(0~1): <input id="confInput" type="number" min="0" max="1" step="0.01" value="0.3" /></label>
+          <button id="runDetectBtn">자동 분석</button>
+          <button id="playResultsBtn">결과 재생</button>
+          <button id="exportCSV">CSV 내보내기</button>
+        </div>
+        <div class="hint">분석을 실행하면 그래프가 갱신되고 오버레이에 박스가 그려집니다.</div>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <div class="video-wrap">
+        <video id="videoMain" playsinline muted></video>
+        <img id="framePreview" alt="frame preview" />
+        <canvas id="overlay"></canvas>
+      </div>
+      <aside class="analysis">
+        <div class="big">스케일(픽셀→단위)</div>
+        <div class="row small"><label>픽셀/단위: <input id="scaleInput" type="number" min="0.0001" step="0.0001" value="100" /></label></div>
+        <div id="charts"><canvas id="posChart"></canvas><canvas id="velChart"></canvas></div>
+      </aside>
+    </section>
+    <footer>모델 파일(<code>yolov8n.onnx</code>)을 페이지 폴더 또는 <code>./model/</code>에 두세요.</footer>
+  </div>
+
+  <script src="./app.js?v=20251120-7"></script>
 </body>
 </html>
