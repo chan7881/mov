@@ -1,3 +1,4 @@
+
 :root{ --bg:#0f1724; --card:#0b1220; --accent:#0ea5ff; --text:#e6eef8; }
 *{ box-sizing:border-box; }
 html,body{ height:100%; margin:0; font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans KR',sans-serif; background:linear-gradient(180deg,#071024,#0b1522); color:var(--text); }

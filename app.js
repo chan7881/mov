@@ -1,5 +1,6 @@
 
 (function(){
+  'use strict';
   // Elements
   var video = document.getElementById('videoMain');
   var overlay = document.getElementById('overlay');
@@ -97,7 +98,7 @@
   if(completeROIsBtn){ completeROIsBtn.addEventListener('click', function(){ switchTab(4); if(runDetectBtn) runDetectBtn.click(); }); }
 
   // Model load
-  function loadModel(){ if(statusEl) statusEl.textContent='모델 로드 상태: 로딩 시도 중...'; var paths=['./yolov8n.onnx','./model/yolov8n.onnx','../yolov8n.onnx','../model/yolov8n.onnx']; (function tryNext(i){ if(i>=paths.length){ modelLoaded=false; if(statusEl) statusEl.innerHTML='모델 로드 상태: 실패 — <code>yolov8n.onnx</code> 위치를 확인'; return; } fetch(paths[i]).then(function(resp){ if(!resp.ok) throw new Error('HTTP '+resp.status); return resp.arrayBuffer(); }).then(function(ab){ return ort.InferenceSession.create(ab,{executionProviders:['wasm','webgl']}); }).then(function(sess){ modelSession=sess; modelLoaded=true; if(statusEl) statusEl.textContent='모델 로드 상태: 성공 ('+paths[i]+')'; }).catch(function(){ tryNext(i+1); }); })(0); }
+  function loadModel(){ if(statusEl) statusEl.textContent='모델 로드 상태: 로딩 시도 중...'; var paths=['./yolov8n.onnx','./model/yolov8n.onnx']; (function tryNext(i){ if(i>=paths.length){ modelLoaded=false; if(statusEl) statusEl.innerHTML='모델 로드 상태: 실패 — <code>yolov8n.onnx</code> 위치를 확인'; return; } fetch(paths[i]).then(function(resp){ if(!resp.ok) throw new Error('HTTP '+resp.status); return resp.arrayBuffer(); }).then(function(ab){ return ort.InferenceSession.create(ab,{executionProviders:['wasm','webgl']}); }).then(function(sess){ modelSession=sess; modelLoaded=true; if(statusEl) statusEl.textContent='모델 로드 상태: 성공 ('+paths[i]+')'; }).catch(function(){ tryNext(i+1); }); })(0); }
   loadModel();
 
   // YOLO detection
